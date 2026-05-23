@@ -17,13 +17,26 @@ export default class MiniModeWindow extends Window {
     super();
   }
 
-  private setIgnoreMouseEvents(ignoreMouseEvents: boolean) {
-    if (this.ignoreMouseEvents == ignoreMouseEvents) {
-      return;
-    }
-
-    this.ignoreMouseEvents = ignoreMouseEvents;
+// Original implementation only updated the internal boolean state but never
+// called Electron's API, meaning the transparent window continued intercepting
+// mouse clicks even when it was supposed to be click-through. This caused a
+// dead zone directly below the main Serenade window on Windows.
+private setIgnoreMouseEvents(ignoreMouseEvents: boolean) {
+  if (this.ignoreMouseEvents == ignoreMouseEvents) {
+    return;
   }
+
+  this.ignoreMouseEvents = ignoreMouseEvents;
+
+  // Call Electron's setIgnoreMouseEvents API to actually apply the change
+  // to the window at the OS level. { forward: true } ensures mouse events
+  // are passed through to windows beneath rather than being swallowed.
+  if (this.window) {
+    this.window.setIgnoreMouseEvents(ignoreMouseEvents, {
+      forward: true,
+    });
+  }
+}
 
   static async create(
     bridge: RendererBridge,
